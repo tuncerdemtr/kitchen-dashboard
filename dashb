@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mutfak Markası | Satış Performans Raporu</title>
+    
+    <!-- Google Fonts: Inter (Swiss Design Standard) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons (Minimalist Icon Set) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- SheetJS (Excel Parser) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F3F4F6; /* Açık gri arka plan */
+            color: #1f2937;
+        }
+        
+        /* Chart.js Tooltip Customization Overrides */
+        .chart-container {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+    
+    <!-- Tailwind Config for Brand Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            DEFAULT: '#5F6F52', // Zeytin Yeşili
+                            light: '#A9B388',
+                            dark: '#3E4A35',
+                            accent: '#FEFAE0'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="antialiased min-h-screen pb-12">
+
+    <!-- YENİ: KPI Tooltip (Başlangıçta gizli) -->
+    <div id="kpi-tooltip" class="absolute z-30 hidden p-3 text-sm text-white bg-gray-900 rounded-md shadow-lg min-w-[200px]" style="pointer-events: none;"></div>
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-brand flex items-center justify-center text-white font-bold text-lg rounded-sm">M</div>
+                <h1 class="text-xl font-bold tracking-tight text-gray-900">Mutfak Markası <span class="font-normal text-gray-500 hidden sm:inline">| Satış Raporu</span></h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- YENİ: Filtreler -->
+                <div class="flex items-center gap-2">
+                    <select id="monthFilter" class="text-sm border-gray-300 text-gray-600 bg-white rounded px-2 py-1 cursor-pointer focus:ring-1 focus:ring-brand outline-none">
+                        <option value="all">Tüm Yıl</option>
+                        <option value="0">Ocak</option>
+                        <option value="1">Şubat</option>
+                        <option value="2">Mart</option>
+                        <option value="3">Nisan</option>
+                        <option value="4">Mayıs</option>
+                        <option value="5">Haziran</option>
+                        <option value="6">Temmuz</option>
+                        <option value="7">Ağustos</option>
+                        <option value="8">Eylül</option>
+                        <option value="9">Ekim</option>
+                        <option value="10">Kasım</option>
+                        <option value="11">Aralık</option>
+                    </select>
+                    <select id="channelFilter" class="text-sm border-gray-300 text-gray-600 bg-white rounded px-2 py-1 cursor-pointer focus:ring-1 focus:ring-brand outline-none">
+                        <option value="all">Tüm Kanallar</option>
+                        <option value="Bayi">Bayi</option>
+                        <option value="İntema">İntema</option>
+                    </select>
+                </div>
+
+                <!-- Dosya Yükleme Alanı -->
+                <div class="flex items-center gap-2 border-l pl-4 ml-2">
+                    <input type="file" id="fileUploader" accept=".xlsx, .xls, .csv" class="text-sm text-gray-500 w-full max-w-xs
+                                                                                          file:mr-2 file:py-1 file:px-2 
+                                                                                          file:rounded file:border-0 file:text-sm file:font-medium 
+                                                                                          file:bg-brand-light file:text-brand-dark 
+                                                                                          hover:file:bg-brand hover:file:text-white file:transition-colors file:cursor-pointer">
+                    <button id="uploadButton" class="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                        Yükle & Güncelle
+                    </button>
+                </div>
+                <div class="text-sm text-gray-500 text-right hidden sm:block border-l pl-4 ml-2">
+                    <p class="text-xs">Veri Kaynağı</p>
+                    <span id="dataSource" class="font-medium text-gray-900">Mock Data</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- KPI Cards Section -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            <!-- Card 1 (YENİ: ID eklendi) -->
+            <div id="kpi-gelir-card" class="bg-white p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-help">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-gray-50 rounded-full">
+                        <i class="ph ph-currency-tr text-xl text-gray-700"></i>
+                    </div>
+                    <span id="kpi-gelir-pct" class="flex items-center text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                        <i class="ph ph-arrow-right mr-1"></i> -
+                    </span>
+                </div>
+                <div>
+                    <h3 class="text-gray-500 text-xs font-bold tracking-wider uppercase mb-1">Toplam Tutar</h3>
+                    <p id="kpi-gelir-val" class="text-3xl font-semibold text-gray-900 tracking-tight">₺0</p>
+                </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div id="kpi-unite-card" class="bg-white p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-help">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-gray-50 rounded-full">
+                        <i class="ph ph-package text-xl text-gray-700"></i>
+                    </div>
+                    <span id="kpi-unite-pct" class="flex items-center text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                        <i class="ph ph-arrow-right mr-1"></i> -
+                    </span>
+                </div>
+                <div>
+                    <h3 class="text-gray-500 text-xs font-bold tracking-wider uppercase mb-1">Satılan Ünite</h3>
+                    <p id="kpi-unite-val" class="text-3xl font-semibold text-gray-900 tracking-tight">0 <span class="text-lg font-normal text-gray-400">Adet</span></p>
+                </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div id="kpi-ort-card" class="bg-white p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-help">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-gray-50 rounded-full">
+                        <i class="ph ph-shopping-cart text-xl text-gray-700"></i>
+                    </div>
+                    <span id="kpi-ort-pct" class="flex items-center text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                        <i class="ph ph-arrow-right mr-1"></i> -
+                    </span>
+                </div>
+                <div>
+                    <h3 class="text-gray-500 text-xs font-bold tracking-wider uppercase mb-1">Ort. Sipariş Değeri</h3>
+                    <p id="kpi-ort-val" class="text-3xl font-semibold text-gray-900 tracking-tight">₺0</p>
+                </div>
+            </div>
+
+            <!-- Card 4 (YENİ: Ort. BK) -->
+            <div id="kpi-bk-card" class="bg-white p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-help">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-gray-50 rounded-full">
+                        <i class="ph ph-percent text-xl text-gray-700"></i>
+                    </div>
+                    <span id="kpi-bk-pct" class="flex items-center text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                        <i class="ph ph-arrow-right mr-1"></i> -
+                    </span>
+                </div>
+                <div>
+                    <h3 class="text-gray-500 text-xs font-bold tracking-wider uppercase mb-1">Ort. BK</h3>
+                    <p id="kpi-bk-val" class="text-3xl font-semibold text-gray-900 tracking-tight">%0.0</p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Main Charts Layout (GÜNCELLENDİ: Tam genişlikte) -->
+
+        <!-- Left Column: Sales Trend -->
+        <div class="bg-white p-8 border border-gray-100 shadow-sm">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-semibold text-gray-800 tracking-tight flex items-center">
+                    <span class="w-2 h-2 bg-brand mr-3 rounded-full"></span>
+                    Aylık Satış Trendi (Sadece Mutfak & Ek Sipariş)
+                </h2>
+                <select class="text-sm border-none text-gray-500 bg-gray-50 rounded px-2 py-1 cursor-pointer focus:ring-1 focus:ring-brand outline-none">
+                    <option>Tüm Yıl</option>
+                </select>
+            </div>
+            <div class="relative h-[350px] w-full">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Bottom Section: City Sales (Yukarı taşındı) -->
+        <div class="bg-white p-8 border border-gray-100 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-800 mb-6 tracking-tight flex items-center">
+                <span class="w-2 h-2 bg-brand-dark mr-3 rounded-full"></span>
+                Satış Noktası Dağılımı (Adet)
+            </h2>
+            <div class="relative h-[250px] w-full">
+                <canvas id="cityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- YENİ: 4'lü Kırılım Bölümü (Pie Charts) -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            <!-- Model Ciro -->
+            <div class="bg-white p-8 border border-gray-100 shadow-sm h-[400px] flex flex-col">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 tracking-tight flex items-center">
+                    <span class="w-2 h-2 bg-brand-light mr-3 rounded-full"></span>
+                    Modele Göre Ciro (TL)
+                </h2>
+                <div class="relative flex-1">
+                    <canvas id="modelRevenueChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Model Adet -->
+            <div class="bg-white p-8 border border-gray-100 shadow-sm h-[400px] flex flex-col">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 tracking-tight flex items-center">
+                    <span class="w-2 h-2 bg-brand-light mr-3 rounded-full"></span>
+                    Modele Göre Satış (Adet)
+                </h2>
+                <div class="relative flex-1">
+                    <canvas id="modelUnitChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Malzeme Ciro -->
+            <div class="bg-white p-8 border border-gray-100 shadow-sm h-[400px] flex flex-col">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 tracking-tight flex items-center">
+                    <span class="w-2 h-2 bg-gray-400 mr-3 rounded-full"></span>
+                    Malzemeye Göre Ciro (TL)
+                </h2>
+                <div class="relative flex-1">
+                    <canvas id="materialRevenueChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Malzeme Adet -->
+            <div class="bg-white p-8 border border-gray-100 shadow-sm h-[400px] flex flex-col">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 tracking-tight flex items-center">
+                    <span class="w-2 h-2 bg-gray-400 mr-3 rounded-full"></span>
+                    Malzemeye Göre Satış (Adet)
+                </h2>
+                <div class="relative flex-1">
+                    <canvas id="materialUnitChart"></canvas>
+                </div>
+            </div>
+
+        </section>
+
+
+    </main>
+
+    <footer class="max-w-7xl mx-auto px-4 py-6 text-center text-gray-400 text-xs">
+        <p>&copy; 2025 Mutfak Markası A.Ş. Tüm hakları saklıdır. Gizli Kurumsal Veri.</p>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Global Chart Settings
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#6b7280';
+        Chart.defaults.scale.grid.color = '#f3f4f6';
+        
+        const BRAND_COLOR = '#5F6F52'; // Zeytin Yeşili
+        const BRAND_LIGHT = '#A9B388';
+        const BRAND_DARK = '#3E4A35';
+
+        // Global Chart Instances (GÜNCELLENDİ)
+        let trendChart, cityChart;
+        let modelRevenueChart, modelUnitChart, materialRevenueChart, materialUnitChart;
+        
+        // Ay İsimleri (Türkçe)
+        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+        // YENİ: Filtreler için global değişkenler
+        let rawExcelData = []; // Yüklenen ham veriyi tutar
+        let kpiBreakdowns = {}; // Tooltip verilerini tutar
+
+        // Helper: Para Formatlama
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).format(value);
+        };
+
+        // Helper: Sayı Formatlama
+        const formatNumber = (value) => {
+            return new Intl.NumberFormat('tr-TR').format(value);
+        };
+        
+        // YENİ: Yüzde Formatlama
+        const formatPercentage = (value) => {
+            return `${(value * 100).toFixed(1)}%`;
+        };
+        
+        // Mock Data Initialization (Sayfa ilk açıldığında)
+        window.onload = () => {
+            initializeChartsWithMockData();
+            
+            // Event Listener for File Upload
+            document.getElementById('uploadButton').addEventListener('click', handleFileUpload);
+
+            // YENİ: Filtre Event Listeners
+            document.getElementById('monthFilter').addEventListener('change', masterRender);
+            document.getElementById('channelFilter').addEventListener('change', masterRender);
+
+
+            // YENİ: KPI Tooltip Event Listeners (Dinamik)
+            setupTooltipListener('kpi-gelir-card', 'Satış Noktası', formatCurrency);
+            setupTooltipListener('kpi-unite-card', 'Satış Noktası', formatNumber); // YENİ
+            setupTooltipListener('kpi-ort-card', 'Ort. Sipariş Değeri (Kanal)', formatCurrency);
+            setupTooltipListener('kpi-bk-card', 'Ort. BK (Satış Noktası)', formatPercentage); // YENİ
+        };
+
+        // YENİ: Tooltip dinleyicisini kuran helper
+        function setupTooltipListener(cardId, title, formatter) {
+            const card = document.getElementById(cardId);
+            const kpiTooltip = document.getElementById('kpi-tooltip');
+
+            card.addEventListener('mouseover', (e) => {
+                const breakdown = kpiBreakdowns[cardId]; // Global objeden veriyi oku
+                if (!breakdown || Object.keys(breakdown).length === 0) return; 
+
+                let tooltipHtml = `<h4 class="font-bold mb-2 border-b border-gray-600 pb-1">${title}</h4><ul class="space-y-1">`;
+                const sortedBreakdown = Object.entries(breakdown).sort(([, a], [, b]) => b - a);
+                
+                for (const [key, value] of sortedBreakdown) {
+                    tooltipHtml += `<li class="flex justify-between items-center"><span class="text-gray-300 mr-4">${key}:</span> <span class="font-medium">${formatter(value)}</span></li>`;
+                }
+                tooltipHtml += '</ul>';
+                
+                kpiTooltip.innerHTML = tooltipHtml;
+                kpiTooltip.classList.remove('hidden');
+            });
+
+            card.addEventListener('mousemove', (e) => {
+                kpiTooltip.style.left = `${e.pageX + 15}px`;
+                kpiTooltip.style.top = `${e.pageY}px`;
+            });
+
+            card.addEventListener('mouseout', () => {
+                kpiTooltip.classList.add('hidden');
+            });
+        }
+
+
+        // --- Veri Yükleme ve İşleme Fonksiyonları ---
+
+        function handleFileUpload() {
+            const fileInput = document.getElementById('fileUploader');
+            const file = fileInput.files[0];
+            const uploadButton = document.getElementById('uploadButton');
+
+            if (!file) {
+                console.warn("Dosya seçilmedi.");
+                return;
+            }
+
+            uploadButton.innerText = "İşleniyor...";
+            uploadButton.disabled = true;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    
+                    const targetSheetName = "Parekende_Detay"; 
+                    let worksheet;
+
+                    if (workbook.SheetNames.includes(targetSheetName)) {
+                        worksheet = workbook.Sheets[targetSheetName];
+                    } else {
+                        alert(`Hata: Yüklenen Excel dosyasında "${targetSheetName}" adında bir sayfa bulunamadı. Lütfen doğru dosyayı yüklediğinizden emin olun.`);
+                        console.error(`"${targetSheetName}" sayfası bulunamadı. Bulunan sayfalar:`, workbook.SheetNames);
+                        uploadButton.innerText = "Yükle & Güncelle";
+                        uploadButton.disabled = false;
+                        return; 
+                    }
+                    
+                    const json_data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+                    
+                    // Veriyi ham olarak global değişkene kaydet
+                    rawExcelData = json_data.slice(1); // Başlık satırını atla
+                    
+                    // Dashboard'u ilk kez işle ve render et
+                    masterRender();
+                    
+                    // Veri kaynağı adını güncelle
+                    document.getElementById('dataSource').innerText = file.name;
+
+                } catch (error) {
+                    console.error("Dosya okunurken hata oluştu:", error);
+                    alert("Hata: Dosya işlenemedi. Lütfen dosya formatını kontrol edin.");
+                } finally {
+                    uploadButton.innerText = "Yükle & Güncelle";
+                    uploadButton.disabled = false;
+                }
+            };
+            reader.onerror = (err) => {
+                 console.error("FileReader hatası:", err);
+                 uploadButton.innerText = "Yükle & Güncelle";
+                 uploadButton.disabled = false;
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // YENİ: Ana render fonksiyonu (filtreler değiştiğinde veya dosya yüklendiğinde çalışır)
+        function masterRender() {
+            if (rawExcelData.length === 0) {
+                console.log("Render için ham veri yok.");
+                return;
+            }
+
+            const selectedMonth = document.getElementById('monthFilter').value;
+            const selectedChannel = document.getElementById('channelFilter').value;
+
+            // Ham veriyi filtrelere göre işle
+            const processedData = processData(rawExcelData, selectedMonth, selectedChannel);
+            
+            // İşlenmiş veriyle dashboard'u güncelle
+            if (processedData) {
+                updateDashboard(processedData);
+            }
+        }
+
+
+        // YENİ: Excel tarih (serial) veya string'i JS Date'e çeviren helper
+        function parseDate(excelDate) {
+            if (excelDate instanceof Date) {
+                return excelDate; // Zaten doğru formatta
+            }
+            if (typeof excelDate === 'number' && excelDate > 25569) {
+                // Excel seri tarihi (1970-01-01 = 25569)
+                // UTC olarak al, timezone kaymasını engelle
+                return new Date(Math.round((excelDate - 25569) * 86400 * 1000) + new Date().getTimezoneOffset() * 60000);
+            }
+            if (typeof excelDate === 'string') {
+                // "2025-05-30" veya "DD.MM.YYYY" gibi string formatları dene
+                let date;
+                if (excelDate.includes('.')) {
+                    // DD.MM.YYYY formatını YYYY-MM-DD'ye çevir
+                    const parts = excelDate.split(' ')[0].split('.');
+                    if (parts.length === 3) {
+                         // parts[2], parts[1] - 1, parts[0]
+                        date = new Date(parts[2], parts[1] - 1, parts[0]);
+                    }
+                } else {
+                     date = new Date(excelDate);
+                }
+               
+                if (date instanceof Date && !isNaN(date.getTime())) {
+                    return date;
+                }
+            }
+            return null; // Geçersiz format
+        }
+
+        /**
+         * Yüklenen veriyi işler ve dashboard için hazırlar.
+         * VERİ EŞLEŞTİRME (VARSAYIMLAR):
+         * A (0): Satış Noktası (Şehir/Bayi)
+         * D (3): Müşteri Adı
+         * E (4): Tür (FİLTRE: "Mutfak" veya "Ek Sipariş")
+         * F (5): Kanal (FİLTRE: "Bayi" veya "İntema")
+         * K (10): Adet
+         * P (15): Sipariş No
+         * T (19): Malzeme
+         * V (21): Kapak Model
+         * AG (32): Fatura Tarihi (Tarih) - GÜNCELLENDİ
+         * AI (34): Toplam Tutar (Gelir)
+         * AK (36): BK (Brüt Kâr) - YENİ KPI
+         * AP (41): Maliyet (Cost) - YENİ KPI
+         */
+        function processData(allRows, monthFilter, channelFilter) {
+            
+            // 1. FİLTRELEME AŞAMASI
+            const rows = allRows.filter(row => {
+                if (!row) return false;
+
+                // Temel Filtre: Tür (E sütunu, index 4)
+                const type = row[4];
+                if (type !== "Mutfak" && type !== "Ek Sipariş") {
+                    return false;
+                }
+
+                // Ay Filtresi (AG sütunu, index 32) - GÜNCELLENDİ
+                if (monthFilter !== "all") {
+                    const date = parseDate(row[32]);
+                    if (!date || date.getMonth() != monthFilter) {
+                        return false;
+                    }
+                }
+
+                // Kanal Filtresi (F sütunu, index 5)
+                const channel = row[5]; // "Bayi" veya "İntema"
+                if (channelFilter !== "all") {
+                    if (channel !== channelFilter) {
+                        return false;
+                    }
+                }
+                
+                return true; // Tüm filtrelerden geçti
+            });
+
+
+            if (rows.length === 0) {
+                alert("Uyarı: Seçilen filtrelerle eşleşen 'Mutfak' veya 'Ek Sipariş' türünde veri bulunamadı.");
+                // Grafikleri ve KPI'ları sıfırla
+                return getEmptyDataStructure();
+            }
+
+            // 2. AGREGASYON AŞAMASI
+            let totalRevenue = 0;
+            let totalUnits = 0;
+            const customerSet = new Set(); // Artık kullanılmıyor ama kalsın
+            const orderSet = new Set();
+            
+            // KPI Tooltip verileri
+            const revenueBreakdownChannel = {};
+            const unitBreakdownChannel = {}; // YENİ
+            const avgOrderValueBreakdown = {}; // Kanal bazlı gelir ve sipariş sayısını tut
+            const channelOrderCounts = {};
+            const avgGrossProfitBreakdown = {}; // YENİ
+            const channelMarginCounts = {}; // YENİ
+
+            // Trend
+            const monthlySales = new Array(12).fill(0);
+            
+            // Şehir -> Satış Noktası (Adet)
+            const cityUnits = {}; 
+
+            // Pie Chart'lar
+            const modelRevenue = {};
+            const modelUnits = {};
+            const materialRevenue = {};
+            const materialUnits = {};
+            
+            // BK KPI
+            let totalGrossProfitMargin = 0;
+            let grossProfitRowCount = 0;
+
+
+            rows.forEach(row => {
+                const revenue = parseFloat(row[34]) || 0; // AI = index 34
+                const units = parseInt(row[10]) || 0;     // K = index 10
+                const date = parseDate(row[32]);          // AG = index 32 - GÜNCELLENDİ
+                
+                const customer = row[3];                  // D = index 3
+                const orderId = row[15];                  // P = index 15
+                
+                const model = row[21] || "Bilinmiyor";    // V = index 21
+                const material = row[19] || "Bilinmiyor"; // T = index 19
+                const city = row[0] || "Bilinmiyor";      // A = index 0 (Satış Noktası)
+                const channel = row[5] || "Bilinmiyor";   // F = index 5 (Kanal)
+                
+                // DÜZELTME: 'cost' değişkeni burada tanımlanmalı
+                const cost = parseFloat(row[41]) || 0;    // AP = index 41
+
+                // 1. KPI Hesaplamaları
+                totalRevenue += revenue;
+                totalUnits += units;
+                if (customer) customerSet.add(customer);
+                if (orderId) orderSet.add(orderId);
+                
+                // KPI Tooltip verisi (Kanal)
+                revenueBreakdownChannel[channel] = (revenueBreakdownChannel[channel] || 0) + revenue;
+                unitBreakdownChannel[channel] = (unitBreakdownChannel[channel] || 0) + units; // YENİ
+                
+                // Ort. Sipariş Değeri Tooltip verisi
+                avgOrderValueBreakdown[channel] = (avgOrderValueBreakdown[channel] || 0) + revenue;
+                if (orderId) { // Her siparişi bir kez say
+                     if (!channelOrderCounts[channel]) channelOrderCounts[channel] = new Set();
+                     channelOrderCounts[channel].add(orderId);
+                }
+
+                // 2. Aylık Satış (Trend)
+                if (date) { 
+                    const month = date.getMonth(); // 0 = Ocak, 11 = Aralık
+                    monthlySales[month] += revenue;
+                }
+
+                // 3. Satış Noktası (Adet)
+                cityUnits[city] = (cityUnits[city] || 0) + units;
+
+                // 4. Pie Chart Kırılımları
+                modelRevenue[model] = (modelRevenue[model] || 0) + revenue;
+                modelUnits[model] = (modelUnits[model] || 0) + units;
+                materialRevenue[material] = (materialRevenue[material] || 0) + revenue;
+                materialUnits[material] = (materialUnits[material] || 0) + units; // DÜZELTME: Bu satır eksikti
+                 
+                 // 5. Ort. BK Hesaplaması
+                 if (revenue > 0 && cost > 0) {
+                  const margin = 1 - (cost / revenue);
+                  totalGrossProfitMargin += margin;
+                  grossProfitRowCount++;
+                  
+                  // YENİ: BK Tooltip verisi
+                  avgGrossProfitBreakdown[channel] = (avgGrossProfitBreakdown[channel] || 0) + margin;
+                  channelMarginCounts[channel] = (channelMarginCounts[channel] || 0) + 1;
+                }
+            });
+
+            // YENİ: Ort. Sipariş Değeri (Toplam Gelir / Toplam Adet)
+            const avgOrderValue = totalUnits > 0 ? totalRevenue / totalUnits : 0;
+            
+            // Ort. Sip. Değ. Tooltip için son hesaplama
+            const avgOrderValueTooltipData = {};
+            for(const channel in avgOrderValueBreakdown) {
+                const channelRevenue = avgOrderValueBreakdown[channel];
+                const channelOrders = channelOrderCounts[channel] ? channelOrderCounts[channel].size : 0;
+                avgOrderValueTooltipData[channel] = (channelOrders > 0) ? channelRevenue / channelOrders : 0;
+            }
+            
+            // YENİ: Ort. BK Tooltip için son hesaplama
+            const avgGrossProfitTooltipData = {};
+            for(const channel in avgGrossProfitBreakdown) {
+                const channelMarginSum = avgGrossProfitBreakdown[channel];
+                const channelMarginCount = channelMarginCounts[channel] || 0;
+                avgGrossProfitTooltipData[channel] = (channelMarginCount > 0) ? channelMarginSum / channelMarginCount : 0;
+            }
+
+            // Ort. BK
+            const avgGrossProfit = (grossProfitRowCount > 0) ? (totalGrossProfitMargin / grossProfitRowCount) : 0;
+            
+            // Veriyi sırala ve Top N (en iyi N) al
+            const topCities = getTopNData(cityUnits, 10);
+            
+            // Pie chart'lar (Top 5 + Diğer)
+            const topModelRevenue = getTopNData(modelRevenue, 5);
+            const topModelUnits = getTopNData(modelUnits, 5);
+            const topMaterialRevenue = getTopNData(materialRevenue, 5);
+            const topMaterialUnits = getTopNData(materialUnits, 5);
+
+            return {
+                kpis: {
+                    totalRevenue,
+                    totalUnits,
+                    avgOrderValue,
+                    avgGrossProfit,
+                    revenueBreakdown: revenueBreakdownChannel,
+                    unitBreakdown: unitBreakdownChannel, // YENİ
+                    avgOrderValueBreakdown: avgOrderValueTooltipData,
+                    avgGrossProfitBreakdown: avgGrossProfitTooltipData // YENİ
+                },
+                trendData: {
+                    labels: monthNames,
+                    data: monthlySales
+                },
+                cityData: {
+                    labels: Object.keys(topCities),
+                    data: Object.values(topCities)
+                },
+                modelRevenueData: {
+                    labels: Object.keys(topModelRevenue),
+                    data: Object.values(topModelRevenue)
+                },
+                modelUnitData: {
+                    labels: Object.keys(topModelUnits),
+                    data: Object.values(topModelUnits)
+                },
+                materialRevenueData: {
+                    labels: Object.keys(topMaterialRevenue),
+                    data: Object.values(topMaterialRevenue)
+                },
+                materialUnitData: {
+                    labels: Object.keys(topMaterialUnits),
+                    data: Object.values(topMaterialUnits)
+                }
+            };
+        }
+        
+        // YENİ: Boş veri döndüren helper (filtre sonucu boşsa)
+        function getEmptyDataStructure() {
+            const empty = { labels: [], data: [] };
+            return {
+                kpis: {
+                    totalRevenue: 0, totalUnits: 0, avgOrderValue: 0, avgGrossProfit: 0,
+                    revenueBreakdown: {}, unitBreakdown: {}, avgOrderValueBreakdown: {}, avgGrossProfitBreakdown: {}
+                },
+                trendData: { labels: monthNames, data: new Array(12).fill(0) },
+                cityData: empty,
+                modelRevenueData: empty,
+                modelUnitData: empty,
+                materialRevenueData: empty,
+                materialUnitData: empty
+            };
+        }
+        
+        // YENİ: Pie chart güncelleme helper'ı
+        function updatePieChart(chart, data, formatter) {
+            chart.data.labels = data.labels;
+            chart.data.datasets[0].data = data.data;
+            
+            // Renkleri veri sayısına göre ayarla
+            chart.data.datasets[0].backgroundColor = generatePieColors(data.labels.length);
+            
+            if (formatter) {
+                chart.options.plugins.tooltip.callbacks.label = (context) => {
+                    const label = context.label || '';
+                    const value = context.raw || 0;
+                    const sum = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                    const percentage = sum > 0 ? ((value / sum) * 100).toFixed(1) + '%' : '0%';
+                    return `${label}: ${formatter(value)} (${percentage})`;
+                };
+            }
+            chart.update();
+        }
+
+
+        /**
+         * Veriyi alır ve dashboard'u günceller
+         */
+        function updateDashboard(data) {
+            if (!data) return;
+
+            // 1. KPI Kartlarını Güncelle
+            document.getElementById('kpi-gelir-val').innerText = formatCurrency(data.kpis.totalRevenue);
+            document.getElementById('kpi-unite-val').innerText = `${formatNumber(data.kpis.totalUnits)} Adet`;
+            document.getElementById('kpi-ort-val').innerText = formatCurrency(data.kpis.avgOrderValue);
+            document.getElementById('kpi-bk-val').innerText = formatPercentage(data.kpis.avgGrossProfit);
+            
+            // YENİ: Tooltip verisini global objeye ata
+            kpiBreakdowns['kpi-gelir-card'] = data.kpis.revenueBreakdown;
+            kpiBreakdowns['kpi-unite-card'] = data.kpis.unitBreakdown;
+            kpiBreakdowns['kpi-ort-card'] = data.kpis.avgOrderValueBreakdown;
+            kpiBreakdowns['kpi-bk-card'] = data.kpis.avgGrossProfitBreakdown;
+            
+            // KPI yüzdelerini sıfırla (karşılaştırma verisi yok)
+            document.querySelectorAll('[id$="-pct"]').forEach(el => {
+                el.innerHTML = '<i class="ph ph-arrow-right mr-1"></i> -';
+                el.className = "flex items-center text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded";
+            });
+
+            // 2. Trend Grafiğini Güncelle
+            trendChart.data.labels = data.trendData.labels;
+            trendChart.data.datasets[0].data = data.trendData.data;
+            trendChart.update();
+            // 3. Şehir Grafiğini Güncelle (Adet)
+            cityChart.data.labels = data.cityData.labels;
+            cityChart.data.datasets[0].data = data.cityData.data;
+            cityChart.options.plugins.tooltip.callbacks.label = (context) => formatNumber(context.raw) + " Adet";
+            cityChart.update();
+            
+            // 4. YENİ Pie Grafikleri Güncelle
+            updatePieChart(modelRevenueChart, data.modelRevenueData, formatCurrency);
+            updatePieChart(modelUnitChart, data.modelUnitData, formatNumber);
+            updatePieChart(materialRevenueChart, data.materialRevenueData, formatCurrency);
+            updatePieChart(materialUnitChart, data.materialUnitData, formatNumber);
+
+            // Veri kaynağını güncelle (masterRender'a taşındı)
+            // document.getElementById('dataSource').innerText = fileName;
+        }
+
+        // Helper: Veriyi Top N + "Diğer" olarak grupla
+        function getTopNData(dataObject, topN = 5) {
+            const sorted = Object.entries(dataObject)
+                // "Bilinmiyor" olanı en sona at
+                .filter(([key]) => key !== "Bilinmiyor")
+                .sort(([, a], [, b]) => b - a);
+            
+            const otherData = dataObject["Bilinmiyor"] || 0;
+
+            if (sorted.length <= topN) {
+                 const finalData = Object.fromEntries(sorted);
+                 if (otherData > 0) finalData["Bilinmiyor"] = otherData;
+                 return finalData;
+            }
+
+            const topData = Object.fromEntries(sorted.slice(0, topN));
+            // "Diğer"lerin toplamına "Bilinmiyor"u da ekle
+            const otherSum = sorted.slice(topN).reduce((sum, [, val]) => sum + val, 0) + otherData;
+            
+            if(otherSum > 0) {
+                 topData["Diğer"] = otherSum;
+            }
+           
+            return topData;
+        }
+
+        // YENİ: Pie Chart Renk paleti
+        const PIE_COLORS = [BRAND_COLOR, BRAND_LIGHT, BRAND_DARK, '#6b7280', '#9ca3af', '#d1d5db', '#e5e7eb'];
+
+        function generatePieColors(count) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                colors.push(PIE_COLORS[i % PIE_COLORS.length]);
+            }
+            return colors;
+        }
+
+
+        // YENİ: Pie/Doughnut chart oluşturan helper
+        function createPieChart(canvasId, mockData, formatterCallback) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            return new Chart(ctx, {
+                type: 'doughnut',
+                data: mockData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { size: 11 },
+                                boxWidth: 10,
+                                usePointStyle: true,
+                                pointStyle: 'rectRounded'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#374151',
+                            padding: 10,
+                            callbacks: {
+                                label: formatterCallback // Bu, update'de dinamik olarak ayarlanacak
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Sayfa Yüklendiğinde Mock Veri ile Grafikleri Çiz ---
+
+        function initializeChartsWithMockData() {
+            // 1. Trend Chart (Area)
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            const gradientTrend = ctxTrend.createLinearGradient(0, 0, 0, 400);
+            gradientTrend.addColorStop(0, 'rgba(95, 111, 82, 0.2)');
+            gradientTrend.addColorStop(1, 'rgba(95, 111, 82, 0.0)');
+
+            const mockTrendData = {
+                labels: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'],
+                datasets: [{
+                    label: 'Satış Tutarı (TL)',
+                    data: [400000, 300000, 550000, 480000, 600000, 750000],
+                    borderColor: BRAND_COLOR,
+                    backgroundColor: gradientTrend,
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: BRAND_COLOR,
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            };
+            
+            trendChart = new Chart(ctxTrend, {
+                type: 'line',
+                data: mockTrendData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#111',
+                            bodyColor: '#555',
+                            borderColor: '#e5e7eb',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { borderDash: [4, 4] },
+                            ticks: {
+                                callback: function(value) {
+                                    return '₺' + value / 1000 + 'k';
+                                }
+                            },
+                            border: { display: false }
+                        },
+                        x: {
+                            grid: { display: false },
+                            border: { display: false }
+                        }
+                    }
+                }
+            });
+
+
+            // 2. City Chart (Vertical Bar) - ADET OLARAK GÜNCELLENDİ
+            const ctxCity = document.getElementById('cityChart').getContext('2d');
+            const mockCityData = {
+                labels: ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Diğer'],
+                datasets: [{
+                    label: 'Satış Adedi',
+                    data: [120, 80, 70, 45, 40, 30],
+                    backgroundColor: BRAND_COLOR,
+                    borderRadius: 4,
+                    barThickness: 40
+                }]
+            };
+            
+            cityChart = new Chart(ctxCity, {
+                type: 'bar',
+                data: mockCityData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#374151',
+                            padding: 10,
+                            cornerRadius: 4,
+                            callbacks: {
+                                label: (context) => formatNumber(context.raw) + " Adet"
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { display: false },
+                        x: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+
+            // 3. YENİ Kırılım Grafikleri (Pie)
+            const currencyTooltip = (ctx) => {
+                if (!ctx.raw) return " 0";
+                const sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                const percentage = sum > 0 ? ((ctx.raw / sum) * 100).toFixed(1) + '%' : '0%';
+                return ` ${ctx.label}: ${formatCurrency(ctx.raw)} (${percentage})`;
+            };
+            const numberTooltip = (ctx) => {
+                if (!ctx.raw) return " 0";
+                const sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                const percentage = sum > 0 ? ((ctx.raw / sum) * 100).toFixed(1) + '%' : '0%';
+                return ` ${ctx.label}: ${formatNumber(ctx.raw)} Adet (${percentage})`;
+            };
+            
+            const mockModelRev = { labels: ['Ada', 'L Tipi', 'Galeri'], datasets: [{ label: 'Ciro', data: [1200000, 900000, 500000], backgroundColor: generatePieColors(3) }] };
+            const mockModelUnit = { labels: ['Ada', 'L Tipi', 'Galeri'], datasets: [{ label: 'Adet', data: [45, 30, 15], backgroundColor: generatePieColors(3) }] };
+            const mockMatRev = { labels: ['Mermer', 'Masif', 'Granit'], datasets: [{ label: 'Ciro', data: [2000000, 1500000, 800000], backgroundColor: generatePieColors(3) }] };
+            const mockMatUnit = { labels: ['Mermer', 'Masif', 'Granit'], datasets: [{ label: 'Adet', data: [85, 65, 45], backgroundColor: generatePieColors(3) }] };
+
+            modelRevenueChart = createPieChart('modelRevenueChart', mockModelRev, currencyTooltip);
+            modelUnitChart = createPieChart('modelUnitChart', mockModelUnit, numberTooltip);
+            materialRevenueChart = createPieChart('materialRevenueChart', mockMatRev, currencyTooltip);
+// Veri setini mockData'dan ayır
+            const mockMatUnitData = {
+                labels: ['Mermer', 'Masif', 'Granit'], 
+                datasets: [{ 
+                    label: 'Adet', 
+                    data: [85, 65, 45], 
+                    backgroundColor: generatePieColors(3) 
+                }]
+            };
+            materialUnitChart = createPieChart('materialUnitChart', mockMatUnitData, numberTooltip);
+
+            
+            // İlk KPI'ları mock veriye göre doldur
+            document.getElementById('kpi-gelir-val').innerText = formatCurrency(3080000);
+            document.getElementById('kpi-unite-val').innerText = `${formatNumber(142)} Mutfak`;
+            document.getElementById('kpi-ort-val').innerText = formatCurrency(21690);
+            document.getElementById('kpi-bk-val').innerText = `%42.5`;
+            document.getElementById('kpi-gelir-pct').innerHTML = '<i class="ph ph-arrow-up-right mr-1"></i> %12.5';
+            document.getElementById('kpi-gelir-pct').className = "flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded";
+            // ... (diğer mock yüzdeler de eklenebilir)
+        }
+    </script>
+</body>
+</html>
