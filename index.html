@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mutfak Markası Satış Raporu</title>
+
+  <!-- Inter font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card-bg: #ffffff;
+      --border-subtle: #e0e0e5;
+      --text-main: #111111;
+      --text-muted: #6b6b75;
+      --accent: #324f3b; /* vurgu rengi: zeytin/yeşil ton */
+      --accent-soft: rgba(50, 79, 59, 0.08);
+      --danger: #e5534b;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --shadow-soft: 0 14px 40px rgba(15, 23, 42, 0.09);
+      --transition-fast: 160ms ease-out;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+      padding: 32px 16px;
+    }
+
+    .dashboard-shell {
+      max-width: 1320px;
+      margin: 0 auto;
+      background: radial-gradient(circle at top left, #ffffff 0, #f4f4f7 40%, #f2f2f6 100%);
+      border-radius: 18px;
+      box-shadow: var(--shadow-soft);
+      padding: 28px 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 16px;
+    }
+
+    .dashboard-title-block h1 {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .dashboard-title-block p {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .dashboard-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .tag-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .tag-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      padding: 14px 14px 12px;
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+      border-color: rgba(0, 0, 0, 0.06);
+      background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .kpi-pill {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .kpi-value {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .kpi-sub {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .kpi-trend {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 500;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .kpi-trend.negative {
+      color: var(--danger);
+    }
+
+    .trend-arrow {
+      font-size: 10px;
+    }
+
+    .dashboard-main {
+      display: grid;
+      grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      padding: 14px 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .panel-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .panel-body {
+      border-radius: var(--radius-sm);
+      border: 1px dashed rgba(0, 0, 0, 0.07);
+      background: repeating-linear-gradient(
+        135deg,
+        #fafbfc,
+        #fafbfc 6px,
+        #f4f5f7 6px,
+        #f4f5f7 12px
+      );
+      min-height: 210px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .placeholder-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.85);
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      z-index: 1;
+    }
+
+    .placeholder-grid-lines {
+      position: absolute;
+      inset: 0;
+      opacity: 0.18;
+      background-image:
+        linear-gradient(to right, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+      background-size: 42px 42px;
+      pointer-events: none;
+    }
+
+    .right-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-body--small {
+      min-height: 150px;
+    }
+
+    .dashboard-footer {
+      margin-top: 4px;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-shell {
+        padding: 20px 16px 18px;
+      }
+      .kpi-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .dashboard-main {
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 18px 10px;
+      }
+      .dashboard-shell {
+        padding: 16px 12px 14px;
+        gap: 18px;
+      }
+      .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .dashboard-title-block h1 {
+        font-size: 20px;
+      }
+      .kpi-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .dashboard-main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="dashboard-shell">
+  <header class="dashboard-header">
+    <div class="dashboard-title-block">
+      <h1>Mutfak Markası Satış Raporu</h1>
+      <p>Örnek dashboard şablonu &mdash; bileşenleri kendi verinle doldur.</p>
+    </div>
+    <div class="dashboard-meta">
+      <div class="tag-pill">
+        <span class="tag-dot"></span>
+        <span>Statik Prototip</span>
+      </div>
+      <span>Dönem: Son 12 Ay</span>
+    </div>
+  </header>
+
+  <section class="kpi-row">
+    <article class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">Toplam Gelir</span>
+        <span class="kpi-pill">₺ placeholder</span>
+      </div>
+      <div class="kpi-value">₺ 0</div>
+      <div class="kpi-sub">
+        <span>Önceki döneme göre</span>
+        <span class="kpi-trend">
+          <span class="trend-arrow">▲</span> +0%
+        </span>
+      </div>
+    </article>
+
+    <article class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">Satılan Ünite</span>
+        <span class="kpi-pill">Adet</span>
+      </div>
+      <div class="kpi-value">0</div>
+      <div class="kpi-sub">
+        <span>Toplam sipariş adedi</span>
+        <span class="kpi-trend">
+          <span class="trend-arrow">▲</span> +0%
+        </span>
+      </div>
+    </article>
+
+    <article class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">Ortalama Sipariş Değeri</span>
+        <span class="kpi-pill">₺ / sipariş</span>
+      </div>
+      <div class="kpi-value">₺ 0</div>
+      <div class="kpi-sub">
+        <span>Gelir / sipariş</span>
+        <span class="kpi-trend negative">
+          <span class="trend-arrow">▼</span> 0%
+        </span>
+      </div>
+    </article>
+
+    <article class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">Yeni Müşteri Sayısı</span>
+        <span class="kpi-pill">Son 30 gün</span>
+      </div>
+      <div class="kpi-value">0</div>
+      <div class="kpi-sub">
+        <span>İlk kez alışveriş yapan</span>
+        <span class="kpi-trend">
+          <span class="trend-arrow">▲</span> +0%
+        </span>
+      </div>
+    </article>
+  </section>
+
+  <section class="dashboard-main">
+    <article class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Aylık Satış Trendi</h2>
+        <div class="panel-meta">
+          <span>Çizgi Grafik Yer Tutucu</span>
+          <span>Ölçek: Aylık</span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="placeholder-grid-lines" aria-hidden="true"></div>
+        <span class="placeholder-label">Line Chart</span>
+      </div>
+    </article>
+
+    <div class="right-stack">
+      <article class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">En Popüler Modeller</h2>
+          <div class="panel-meta">
+            <span>Halka Grafik Yer Tutucu</span>
+          </div>
+        </div>
+        <div class="panel-body panel-body--small">
+          <div class="placeholder-grid-lines" aria-hidden="true"></div>
+          <span class="placeholder-label">Donut Chart</span>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Popüler Malzemeler</h2>
+          <div class="panel-meta">
+            <span>Yatay Çubuk Grafik Yer Tutucu</span>
+          </div>
+        </div>
+        <div class="panel-body panel-body--small">
+          <div class="placeholder-grid-lines" aria-hidden="true"></div>
+          <span class="placeholder-label">Horizontal Bar</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="dashboard-footer">
+    <article class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Şehirlere Göre Satış Dağılımı</h2>
+        <div class="panel-meta">
+          <span>Çubuk Grafik Yer Tutucu</span>
+          <span>En çok satan ilk 10 şehir</span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="placeholder-grid-lines" aria-hidden="true"></div>
+        <span class="placeholder-label">Bar Chart</span>
+      </div>
+    </article>
+  </section>
+</div>
+
+</body>
+</html>
