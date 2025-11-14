@@ -3,215 +3,625 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mutfak Markası Satış Raporu</title>
+    <title>Mutfak Satış Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            DEFAULT: '#5F6F52',
+                            dark: '#3E4A35',
+                            light: '#A9B388'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
     <style>
-        :root {
-            --background: #f7f7f7;
-            --card-bg: #ffffff;
-            --text-primary: #212529;
-            --text-secondary: #6c757d;
-            --grid-line: #e2e5e9;
-            --accent: #5f6f52; /* Zeytin yeşili */
+        body { font-family: 'Inter', sans-serif; }
+        #kpi-tooltip {
+            pointer-events: none;
         }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Inter', Helvetica, Arial, sans-serif;
-            background: var(--background);
-            color: var(--text-primary);
-        }
-
-        .page {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 56px 32px 72px;
-            display: flex;
-            flex-direction: column;
-            gap: 48px;
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 600;
-            letter-spacing: -0.02em;
-        }
-
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 24px;
-        }
-
-        .kpi-card {
-            background: var(--card-bg);
-            border: 1px solid var(--grid-line);
-            border-radius: 14px;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-            min-height: 150px;
-        }
-
-        .kpi-card h2 {
-            font-size: 0.85rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--text-secondary);
-            margin: 0;
-        }
-
-        .kpi-placeholder {
-            font-size: clamp(1.8rem, 3vw, 2.4rem);
-            font-weight: 500;
-            color: var(--accent);
-        }
-
-        .content-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 32px;
-        }
-
-        .panel {
-            background: var(--card-bg);
-            border: 1px solid var(--grid-line);
-            border-radius: 16px;
-            padding: 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            min-height: 280px;
-        }
-
-        .panel header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .panel h3 {
-            margin: 0;
-            font-size: 1.05rem;
-            font-weight: 600;
-            letter-spacing: -0.01em;
-        }
-
-        .chart-placeholder {
-            flex: 1;
-            border: 1px dashed var(--grid-line);
-            border-radius: 12px;
-            background: repeating-linear-gradient(
-                135deg,
-                rgba(95, 111, 82, 0.06),
-                rgba(95, 111, 82, 0.06) 12px,
-                transparent 12px,
-                transparent 24px
-            );
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .side-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 32px;
-        }
-
-        .full-width {
-            width: 100%;
-        }
-
-        @media (max-width: 1024px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .page {
-                padding: 40px 20px 56px;
-                gap: 36px;
-            }
-
-            .kpi-card {
-                padding: 20px;
-            }
-
-            .panel {
-                padding: 22px;
-            }
+        .data-table tbody tr:nth-child(even) {
+            background-color: #f8fafc;
         }
     </style>
 </head>
-<body>
-    <div class="page">
-        <header>
-            <h1>Mutfak Markası Satış Raporu</h1>
-        </header>
-
-        <section class="kpi-grid" aria-label="Anahtar performans göstergeleri">
-            <article class="kpi-card">
-                <h2>Toplam Tutar</h2>
-                <div class="kpi-placeholder">₺ —</div>
-            </article>
-            <article class="kpi-card">
-                <h2>Satılan Mutfak</h2>
-                <div class="kpi-placeholder">— Adet</div>
-            </article>
-            <article class="kpi-card">
-                <h2>Ortalama Sipariş Değeri</h2>
-                <div class="kpi-placeholder">₺ —</div>
-            </article>
-            <article class="kpi-card">
-                <h2>Brüt Kâr</h2>
-                <div class="kpi-placeholder">₺ —</div>
-            </article>
-        </section>
-
-        <section class="content-grid">
-            <article class="panel" aria-label="Aylık Satış Trendi">
-                <header>
-                    <h3>Aylık Satış Trendi</h3>
-                </header>
-                <div class="chart-placeholder">Çizgi Grafik</div>
-            </article>
-
-            <div class="side-stack">
-                <article class="panel" aria-label="En Popüler Modeller">
-                    <header>
-                        <h3>En Popüler Modeller</h3>
-                    </header>
-                    <div class="chart-placeholder">Halka Grafik</div>
-                </article>
-                <article class="panel" aria-label="Popüler Malzemeler">
-                    <header>
-                        <h3>Popüler Malzemeler</h3>
-                    </header>
-                    <div class="chart-placeholder">Yatay Çubuk Grafik</div>
-                </article>
-            </div>
-        </section>
-
-        <section class="panel full-width" aria-label="Satış Noktasına Göre Satış Dağılımı">
-            <header>
-                <h3>Satış Noktasına Göre Satış Dağılımı</h3>
-            </header>
-            <div class="chart-placeholder">Çubuk Grafik</div>
-        </section>
+<body class="bg-slate-100 text-slate-900">
+<div id="kpi-tooltip" class="hidden fixed z-50 rounded-md bg-slate-900/95 px-4 py-3 text-xs text-slate-100 shadow-lg"></div>
+<header class="border-b border-slate-200 bg-white">
+    <div class="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Mutfak Satış Dashboard</h1>
+            <p class="text-sm text-slate-500">Excel dosyanı yükle, yalnızca "Mutfak" satışlarını analiz et.</p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label class="flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 hover:border-brand hover:text-brand">
+                <i class="ph ph-upload-simple text-base"></i>
+                <span>Excel Yükle</span>
+                <input id="fileInput" type="file" accept=".xlsx,.xls" class="hidden">
+            </label>
+            <button id="processButton" class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-400">Yükle &amp; Güncelle</button>
+        </div>
     </div>
+</header>
+<main class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8">
+    <section id="statusSection" class="rounded-lg border border-dashed border-slate-300 bg-white/70 px-4 py-3 text-sm text-slate-600">
+        Analizi başlatmak için .xlsx dosyanızı seçip "Yükle &amp; Güncelle" butonuna tıklayın.
+    </section>
+
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Toplam Gelir</h2>
+            <p id="kpi-gelir" class="mt-3 text-3xl font-semibold text-brand cursor-help">₺0</p>
+            <p class="mt-1 text-xs text-slate-500">F sütunu: Satış Noktası kırılımı için imleci toplam gelir üzerine getir.</p>
+        </article>
+        <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Satılan Ünite</h2>
+            <p id="kpi-unite" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+            <p class="mt-1 text-xs text-slate-500">K sütunu toplamı</p>
+        </article>
+        <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ortalama Sipariş Tutarı</h2>
+            <p id="kpi-avg" class="mt-3 text-3xl font-semibold text-slate-900">₺0</p>
+            <p class="mt-1 text-xs text-slate-500">AI / K</p>
+        </article>
+        <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Satış Noktası Sayısı</h2>
+            <p id="kpi-sales-points" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+            <p class="mt-1 text-xs text-slate-500">F sütunundaki benzersiz değerler</p>
+        </article>
+    </section>
+
+    <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-slate-800">Satış Sezonsallığı (AF)</h3>
+                <span class="text-xs uppercase tracking-wider text-slate-400">Gelir &amp; Adet</span>
+            </div>
+            <canvas id="seasonChart" height="260"></canvas>
+        </article>
+        <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-slate-800">Satış Noktasına Göre Adet</h3>
+                <span class="text-xs uppercase tracking-wider text-slate-400">F &amp; K</span>
+            </div>
+            <canvas id="salesPointChart" height="260"></canvas>
+        </article>
+    </section>
+
+    <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 class="mb-4 text-lg font-semibold text-slate-800">Malzeme Bazında Ciro (AI)</h3>
+            <div class="overflow-x-auto">
+                <table class="data-table min-w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-xs uppercase tracking-wider text-slate-500">
+                        <tr>
+                            <th class="px-3 py-2">Malzeme (T)</th>
+                            <th class="px-3 py-2 text-right">Toplam Gelir</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materialRevenueBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </article>
+        <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 class="mb-4 text-lg font-semibold text-slate-800">Malzeme Bazında Adet (K)</h3>
+            <div class="overflow-x-auto">
+                <table class="data-table min-w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-xs uppercase tracking-wider text-slate-500">
+                        <tr>
+                            <th class="px-3 py-2">Malzeme (T)</th>
+                            <th class="px-3 py-2 text-right">Toplam Adet</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materialUnitBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </article>
+        <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 class="mb-4 text-lg font-semibold text-slate-800">Kapak Modeli Bazında Ciro (AI)</h3>
+            <div class="overflow-x-auto">
+                <table class="data-table min-w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-xs uppercase tracking-wider text-slate-500">
+                        <tr>
+                            <th class="px-3 py-2">Kapak Modeli (V)</th>
+                            <th class="px-3 py-2 text-right">Toplam Gelir</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modelRevenueBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </article>
+        <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 class="mb-4 text-lg font-semibold text-slate-800">Kapak Modeli Bazında Adet (K)</h3>
+            <div class="overflow-x-auto">
+                <table class="data-table min-w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-xs uppercase tracking-wider text-slate-500">
+                        <tr>
+                            <th class="px-3 py-2">Kapak Modeli (V)</th>
+                            <th class="px-3 py-2 text-right">Toplam Adet</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modelUnitBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+</main>
+
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<script>
+    const state = {
+        rows: [],
+        revenueBySalesPoint: {},
+    };
+
+    const tooltipEl = document.getElementById('kpi-tooltip');
+    const revenueEl = document.getElementById('kpi-gelir');
+    const statusSection = document.getElementById('statusSection');
+    const processButton = document.getElementById('processButton');
+    const fileInput = document.getElementById('fileInput');
+
+    let seasonChart;
+    let salesPointChart;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeCharts();
+        attachTooltip(revenueEl, () => state.revenueBySalesPoint, formatCurrency);
+    });
+
+    processButton.addEventListener('click', () => {
+        if (!fileInput.files || fileInput.files.length === 0) {
+            statusSection.textContent = 'Lütfen önce bir Excel dosyası seçin.';
+            statusSection.classList.remove('bg-emerald-50');
+            statusSection.classList.add('bg-amber-50');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        processButton.disabled = true;
+        processButton.textContent = 'İşleniyor…';
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: null });
+                if (!rows || rows.length <= 1) {
+                    throw new Error('Excel sayfasında veri bulunamadı.');
+                }
+                const bodyRows = rows.slice(1);
+                const filtered = bodyRows.filter((row) => normalizeText(row[4]) === 'mutfak');
+
+                if (filtered.length === 0) {
+                    statusSection.textContent = 'Dosyada "Mutfak" olarak işaretlenmiş satır bulunamadı.';
+                    statusSection.className = 'rounded-lg border border-dashed border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700';
+                    updateDashboard(getEmptyMetrics());
+                    state.rows = [];
+                } else {
+                    state.rows = filtered;
+                    const metrics = calculateMetrics(filtered);
+                    updateDashboard(metrics);
+                    statusSection.textContent = `${file.name} dosyası yüklendi. ${filtered.length} satır analiz edildi.`;
+                    statusSection.className = 'rounded-lg border border-dashed border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700';
+                }
+            } catch (error) {
+                console.error(error);
+                statusSection.textContent = 'Dosya işlenirken bir hata oluştu. Lütfen formatı kontrol edin.';
+                statusSection.className = 'rounded-lg border border-dashed border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700';
+                updateDashboard(getEmptyMetrics());
+            } finally {
+                processButton.disabled = false;
+                processButton.textContent = 'Yükle & Güncelle';
+            }
+        };
+        reader.onerror = () => {
+            statusSection.textContent = 'Dosya okunamadı. Lütfen tekrar deneyin.';
+            statusSection.className = 'rounded-lg border border-dashed border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700';
+            processButton.disabled = false;
+            processButton.textContent = 'Yükle & Güncelle';
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function initializeCharts() {
+        const ctxSeason = document.getElementById('seasonChart').getContext('2d');
+        seasonChart = new Chart(ctxSeason, {
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        type: 'line',
+                        label: 'Gelir (₺)',
+                        data: [],
+                        borderColor: '#5F6F52',
+                        backgroundColor: 'rgba(95, 111, 82, 0.12)',
+                        tension: 0.35,
+                        borderWidth: 2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        type: 'bar',
+                        label: 'Adet',
+                        data: [],
+                        backgroundColor: '#CBD2A4',
+                        borderRadius: 6,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        position: 'left',
+                        ticks: {
+                            callback: (value) => `₺${formatShortNumber(value)}`
+                        },
+                        grid: { color: 'rgba(148, 163, 184, 0.2)' }
+                    },
+                    y1: {
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: {
+                            callback: (value) => formatShortNumber(value)
+                        }
+                    },
+                    x: {
+                        ticks: { autoSkip: false }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                if (context.dataset.label.includes('Gelir')) {
+                                    return `${context.dataset.label}: ${formatCurrency(context.raw)}`;
+                                }
+                                return `${context.dataset.label}: ${formatNumber(context.raw)} adet`;
+                            }
+                        }
+                    },
+                    legend: {
+                        labels: {
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+
+        const ctxSalesPoint = document.getElementById('salesPointChart').getContext('2d');
+        salesPointChart = new Chart(ctxSalesPoint, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Satış Adedi',
+                        data: [],
+                        backgroundColor: '#5F6F52',
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: { autoSkip: false },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: {
+                            callback: (value) => formatShortNumber(value)
+                        },
+                        grid: { color: 'rgba(148, 163, 184, 0.2)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${formatNumber(context.raw)} adet`
+                        }
+                    }
+                }
+            }
+        });
+
+        updateDashboard(getEmptyMetrics());
+    }
+
+    function getEmptyMetrics() {
+        return {
+            totalRevenue: 0,
+            totalUnits: 0,
+            avgOrderValue: 0,
+            salesPointCount: 0,
+            revenueBySalesPoint: {},
+            seasonality: { labels: [], revenue: [], units: [] },
+            unitsBySalesPoint: { labels: [], data: [] },
+            materialRevenue: { labels: [], data: [] },
+            materialUnits: { labels: [], data: [] },
+            modelRevenue: { labels: [], data: [] },
+            modelUnits: { labels: [], data: [] }
+        };
+    }
+
+    function calculateMetrics(rows) {
+        const revenueBySalesPoint = new Map();
+        const unitsBySalesPoint = new Map();
+        const seasonalityMap = new Map();
+        const materialRevenue = new Map();
+        const materialUnits = new Map();
+        const modelRevenue = new Map();
+        const modelUnits = new Map();
+
+        let totalRevenue = 0;
+        let totalUnits = 0;
+
+        rows.forEach((row) => {
+            const revenue = toNumber(row[34]);
+            const units = toNumber(row[10]);
+            const salesPoint = getLabel(row[5]);
+            const material = getLabel(row[19]);
+            const model = getLabel(row[21]);
+            const seasonValue = parseSeasonValue(row[31]);
+
+            totalRevenue += revenue;
+            totalUnits += units;
+
+            addToAggregate(revenueBySalesPoint, salesPoint, revenue);
+            addToAggregate(unitsBySalesPoint, salesPoint, units);
+            addToSeasonality(seasonalityMap, seasonValue, revenue, units);
+            addToAggregate(materialRevenue, material, revenue);
+            addToAggregate(materialUnits, material, units);
+            addToAggregate(modelRevenue, model, revenue);
+            addToAggregate(modelUnits, model, units);
+        });
+
+        const seasonality = Array.from(seasonalityMap.values())
+            .sort((a, b) => a.order - b.order)
+            .map((entry) => ({ label: entry.label, revenue: entry.revenue, units: entry.units }));
+
+        return {
+            totalRevenue,
+            totalUnits,
+            avgOrderValue: totalUnits > 0 ? totalRevenue / totalUnits : 0,
+            salesPointCount: revenueBySalesPoint.size,
+            revenueBySalesPoint: Object.fromEntries(Array.from(revenueBySalesPoint.entries()).sort((a, b) => b[1] - a[1])),
+            seasonality: {
+                labels: seasonality.map((item) => item.label),
+                revenue: seasonality.map((item) => item.revenue),
+                units: seasonality.map((item) => item.units)
+            },
+            unitsBySalesPoint: sortEntries(unitsBySalesPoint),
+            materialRevenue: sortEntries(materialRevenue),
+            materialUnits: sortEntries(materialUnits),
+            modelRevenue: sortEntries(modelRevenue),
+            modelUnits: sortEntries(modelUnits)
+        };
+    }
+
+    function updateDashboard(metrics) {
+        document.getElementById('kpi-gelir').textContent = formatCurrency(metrics.totalRevenue);
+        document.getElementById('kpi-unite').textContent = formatNumber(metrics.totalUnits);
+        document.getElementById('kpi-avg').textContent = formatCurrency(metrics.avgOrderValue);
+        document.getElementById('kpi-sales-points').textContent = formatNumber(metrics.salesPointCount);
+
+        state.revenueBySalesPoint = metrics.revenueBySalesPoint;
+
+        seasonChart.data.labels = metrics.seasonality.labels;
+        seasonChart.data.datasets[0].data = metrics.seasonality.revenue;
+        seasonChart.data.datasets[1].data = metrics.seasonality.units;
+        seasonChart.update();
+
+        salesPointChart.data.labels = metrics.unitsBySalesPoint.labels;
+        salesPointChart.data.datasets[0].data = metrics.unitsBySalesPoint.data;
+        salesPointChart.update();
+
+        renderTable('materialRevenueBody', metrics.materialRevenue, formatCurrency);
+        renderTable('materialUnitBody', metrics.materialUnits, (value) => formatNumber(value));
+        renderTable('modelRevenueBody', metrics.modelRevenue, formatCurrency);
+        renderTable('modelUnitBody', metrics.modelUnits, (value) => formatNumber(value));
+    }
+
+    function renderTable(tbodyId, data, formatter) {
+        const tbody = document.getElementById(tbodyId);
+        tbody.innerHTML = '';
+        if (!data.labels || data.labels.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 2;
+            td.className = 'px-3 py-3 text-center text-slate-400';
+            td.textContent = 'Veri yok';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+        data.labels.forEach((label, index) => {
+            const value = data.data[index];
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-3 py-2 text-sm text-slate-700">${label}</td>
+                <td class="px-3 py-2 text-right font-medium text-slate-900">${formatter(value)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function attachTooltip(target, dataGetter, formatter) {
+        target.addEventListener('mouseenter', (event) => {
+            const data = dataGetter();
+            if (!data || Object.keys(data).length === 0) {
+                return;
+            }
+            tooltipEl.innerHTML = '<div class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Satış Noktası</div>' +
+                Object.entries(data)
+                    .map(([label, value]) => `<div class="flex justify-between gap-6"><span>${label}</span><span class="font-medium">${formatter(value)}</span></div>`)
+                    .join('');
+            tooltipEl.classList.remove('hidden');
+            moveTooltip(event);
+        });
+        target.addEventListener('mousemove', moveTooltip);
+        target.addEventListener('mouseleave', () => {
+            tooltipEl.classList.add('hidden');
+        });
+    }
+
+    function moveTooltip(event) {
+        tooltipEl.style.left = `${event.pageX + 16}px`;
+        tooltipEl.style.top = `${event.pageY + 16}px`;
+    }
+
+    function addToAggregate(map, key, value) {
+        const current = map.get(key) || 0;
+        map.set(key, current + value);
+    }
+
+    function addToSeasonality(map, season, revenue, units) {
+        const existing = map.get(season.label) || { label: season.label, order: season.order, revenue: 0, units: 0 };
+        existing.revenue += revenue;
+        existing.units += units;
+        map.set(season.label, existing);
+    }
+
+    function sortEntries(map) {
+        const entries = Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+        return {
+            labels: entries.map(([label]) => label),
+            data: entries.map(([, value]) => value)
+        };
+    }
+
+    function getLabel(value) {
+        const text = normalizeText(value);
+        return text ? capitalize(text) : 'Diğer';
+    }
+
+    function normalizeText(value) {
+        if (value === null || value === undefined) return '';
+        return value.toString().trim().toLowerCase();
+    }
+
+    function capitalize(value) {
+        return value.replace(/(^|\s|[\-\/])([\p{L}])/gu, (match, prefix, letter) => prefix + letter.toUpperCase());
+    }
+
+    function toNumber(value) {
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string') {
+            const normalized = value.replace(/\./g, '').replace(',', '.');
+            const parsed = parseFloat(normalized);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+        return 0;
+    }
+
+    function parseSeasonValue(value) {
+        if (value instanceof Date) {
+            const normalized = new Date(Date.UTC(value.getFullYear(), value.getMonth(), 1));
+            return {
+                label: formatSeasonLabel(normalized),
+                order: normalized.getTime()
+            };
+        }
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            const date = XLSX.SSF.parse_date_code ? XLSX.SSF.parse_date_code(value) : null;
+            if (date) {
+                const jsDate = new Date(Date.UTC(date.y, date.m - 1, 1));
+                return {
+                    label: formatSeasonLabel(jsDate),
+                    order: jsDate.getTime()
+                };
+            }
+            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+            const jsDate = new Date(excelEpoch.getTime() + value * 86400000);
+            if (!Number.isNaN(jsDate.getTime())) {
+                return {
+                    label: formatSeasonLabel(jsDate),
+                    order: jsDate.getTime()
+                };
+            }
+        }
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            const parsedDate = new Date(trimmed);
+            if (!Number.isNaN(parsedDate.getTime())) {
+                const normalized = new Date(Date.UTC(parsedDate.getFullYear(), parsedDate.getMonth(), 1));
+                return {
+                    label: formatSeasonLabel(normalized),
+                    order: normalized.getTime()
+                };
+            }
+            const match = trimmed.match(/^(\d{4})[\.\/-](\d{1,2})$/);
+            if (match) {
+                const year = Number(match[1]);
+                const month = Number(match[2]) - 1;
+                const date = new Date(Date.UTC(year, month, 1));
+                return {
+                    label: formatSeasonLabel(date),
+                    order: date.getTime()
+                };
+            }
+            const fallbackOrder = seasonalityFallbackOrder(trimmed);
+            return {
+                label: trimmed || 'Belirtilmemiş',
+                order: fallbackOrder
+            };
+        }
+        return {
+            label: 'Belirtilmemiş',
+            order: Number.POSITIVE_INFINITY
+        };
+    }
+
+    function seasonalityFallbackOrder(label) {
+        const monthNames = ['ocak','şubat','mart','nisan','mayıs','haziran','temmuz','ağustos','eylül','ekim','kasım','aralık'];
+        const normalized = label.toLowerCase();
+        const index = monthNames.findIndex((name) => normalized.includes(name));
+        return index > -1 ? index : Number.POSITIVE_INFINITY;
+    }
+
+    function formatSeasonLabel(date) {
+        return new Intl.DateTimeFormat('tr-TR', { month: 'short', year: 'numeric' }).format(date);
+    }
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(value || 0);
+    }
+
+    function formatNumber(value) {
+        return new Intl.NumberFormat('tr-TR').format(value || 0);
+    }
+
+    function formatShortNumber(value) {
+        if (!value) return '0';
+        if (Math.abs(value) >= 1_000_000) {
+            return `${(value / 1_000_000).toFixed(1)}M`;
+        }
+        if (Math.abs(value) >= 1_000) {
+            return `${(value / 1_000).toFixed(1)}B`;
+        }
+        return `${value}`;
+    }
+</script>
 </body>
 </html>
