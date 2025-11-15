@@ -205,19 +205,36 @@
                     throw new Error('Excel sayfasında veri bulunamadı.');
                 }
                 const bodyRows = rows.slice(1);
-                const filtered = bodyRows.filter((row) => normalizeText(row[4]) === 'mutfak');
+                const { validRows, unexpected } = partitionRows(bodyRows);
 
-                if (filtered.length === 0) {
-                    statusSection.textContent = 'Dosyada "Mutfak" olarak işaretlenmiş satır bulunamadı.';
+                if (validRows.length === 0) {
+                    const hasCariTransactions = unexpected.cari > 0;
+                    const message = hasCariTransactions
+                        ? `Dosyada beklenmedik cari işlemler tespit edilmiştir. (${unexpected.cari} satır)`
+                        : 'Dosyada "Mutfak" veya "Ek Sipariş" olarak işaretlenmiş satır bulunamadı.';
+                    statusSection.textContent = message;
                     statusSection.className = 'rounded-lg border border-dashed border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700';
                     updateDashboard(getEmptyMetrics());
                     state.rows = [];
                 } else {
-                    state.rows = filtered;
-                    const metrics = calculateMetrics(filtered);
+                    state.rows = validRows;
+                    const metrics = calculateMetrics(validRows);
                     updateDashboard(metrics);
-                    statusSection.textContent = `${file.name} dosyası yüklendi. ${filtered.length} satır analiz edildi.`;
-                    statusSection.className = 'rounded-lg border border-dashed border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700';
+
+                    let message = `${file.name} dosyası yüklendi. ${validRows.length} satır analiz edildi.`;
+                    let className = 'rounded-lg border border-dashed border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700';
+
+                    const skippedCount = unexpected.cari + unexpected.other;
+                    if (skippedCount > 0) {
+                        const cariNote = unexpected.cari > 0 ? `${unexpected.cari} cari işlem satırı` : '';
+                        const otherNote = unexpected.other > 0 ? `${unexpected.other} desteklenmeyen satır` : '';
+                        const skippedNote = [cariNote, otherNote].filter(Boolean).join(' ve ');
+                        message += ` ${skippedNote} otomatik olarak atlandı.`;
+                        className = 'rounded-lg border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800';
+                    }
+
+                    statusSection.textContent = message;
+                    statusSection.className = className;
                 }
             } catch (error) {
                 console.error(error);
@@ -519,6 +536,51 @@
     function normalizeText(value) {
         if (value === null || value === undefined) return '';
         return value.toString().trim().toLowerCase();
+    }
+
+    function partitionRows(rows) {
+        const validRows = [];
+        const unexpected = { cari: 0, other: 0 };
+
+        rows.forEach((row) => {
+            if (!row) return;
+            if (!Array.isArray(row)) {
+                unexpected.other += 1;
+                return;
+            }
+
+            const isCompletelyEmpty = row.every((cell) => cell === null || cell === undefined || normalizeText(cell) === '');
+            if (isCompletelyEmpty) {
+                return;
+            }
+
+            const type = normalizeText(row[4]);
+
+            if (isSupportedKitchenType(type)) {
+                validRows.push(row);
+                return;
+            }
+
+            if (!type) {
+                unexpected.other += 1;
+                return;
+            }
+
+            if (type.includes('cari')) {
+                unexpected.cari += 1;
+                return;
+            }
+
+            unexpected.other += 1;
+        });
+
+        return { validRows, unexpected };
+    }
+
+    function isSupportedKitchenType(type) {
+        if (!type) return false;
+        if (type === 'mutfak') return true;
+        return type.startsWith('ek sip');
     }
 
     function capitalize(value) {
