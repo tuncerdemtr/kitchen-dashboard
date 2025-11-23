@@ -53,6 +53,7 @@
                 <input id="fileInput" type="file" accept=".xlsx,.xls" class="hidden">
             </label>
             <button id="processButton" class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-400">Yükle &amp; Güncelle</button>
+            <button id="demoButton" class="rounded-md border border-brand px-4 py-2 text-sm font-medium text-brand transition hover:bg-brand/10">Teste Başla</button>
         </div>
     </div>
 </header>
@@ -172,7 +173,125 @@
     const revenueEl = document.getElementById('kpi-gelir');
     const statusSection = document.getElementById('statusSection');
     const processButton = document.getElementById('processButton');
+    const demoButton = document.getElementById('demoButton');
     const fileInput = document.getElementById('fileInput');
+
+    const demoRows = [
+        [
+            'İstanbul Bayi',
+            null,
+            null,
+            null,
+            'Mutfak',
+            'Kadıköy',
+            null,
+            null,
+            null,
+            null,
+            2,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            'Masif',
+            null,
+            'Ada',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            new Date('2024-01-15'),
+            null,
+            null,
+            120000,
+            2
+        ],
+        [
+            'Ankara Bayi',
+            null,
+            null,
+            null,
+            'Ek Sipariş',
+            'Çankaya',
+            null,
+            null,
+            null,
+            null,
+            1,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            'Granit',
+            null,
+            'L Tipi',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            new Date('2024-02-10'),
+            null,
+            null,
+            85000,
+            1
+        ],
+        [
+            'İzmir Bayi',
+            null,
+            null,
+            null,
+            'SR Sipariş',
+            'Karşıyaka',
+            null,
+            null,
+            null,
+            null,
+            3,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            'Mermer',
+            null,
+            'Galeri',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            new Date('2024-03-05'),
+            null,
+            null,
+            150000,
+            3
+        ]
+    ];
 
     let seasonChart;
     let salesPointChart;
@@ -180,6 +299,18 @@
     document.addEventListener('DOMContentLoaded', () => {
         initializeCharts();
         attachTooltip(revenueEl, () => state.revenueBySalesPoint, formatCurrency);
+    });
+
+    demoButton.addEventListener('click', () => {
+        statusSection.textContent = 'Demo verisi yükleniyor…';
+        statusSection.className = 'rounded-lg border border-dashed border-slate-300 bg-white/70 px-4 py-3 text-sm text-slate-600';
+
+        const metrics = calculateMetrics(demoRows);
+        state.rows = demoRows;
+        updateDashboard(metrics);
+
+        statusSection.textContent = 'Demo verisi yüklendi. Grafikler ve KPI\'lar güncellendi.';
+        statusSection.className = 'rounded-lg border border-dashed border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700';
     });
 
     processButton.addEventListener('click', () => {
